@@ -12,6 +12,7 @@ library(janitor)
 library(here)
 library(ggmosaic)
 library(gtsummary)
+library(ggplot2)
 ```
 
 # Introduction to Data
@@ -27,13 +28,14 @@ to estimate the association between demographic and social-related factors and l
 represent the association between physical attack severity and loneliness, a mosaic plot will be created. Lastly, a function was created to 
 convert categorical variables with two levels in the dataset into binary variables with values of 0 or 1.
 
-```{r read-in-data, message = FALSE, warning = FALSE, echo = FALSE}
+```{r read-in-data, message = FALSE, warning = FALSE}
+# read in data with here package
 data <- read.delim(here::here("data", "Bullying_2018.csv"), 
 									 na.strings=c("", "NA"), sep = ";") %>%
 clean_names()
 ```
 
-```{r clean-data, message = FALSE, warning = FALSE, echo = FALSE}
+```{r clean-data, message = FALSE, warning = FALSE}
 # remove missing values
 completedata <- replace(data, data == ' ', NA)
 completedata <- na.omit(completedata)
@@ -125,7 +127,7 @@ table1
 
 The number of participants in the overall sample size is `r nrow(table_data)`. 
 
-From the table, the count and percent for female students in the subset of the sample that experienced low numbers of physical attacks in bullying is `r inline_text(table1, variable = "Sex", level = "Female", column = "Low")`.
+From the table, the count and percent for female students in the subset of the sample that experienced low severity of physical attacks in bullying is `r inline_text(table1, variable = "Sex", level = "Female", column = "Low")`.
 
 ## Regression Table
 ```{r}
@@ -160,7 +162,7 @@ tbl_regression(
 #| fig-cap: "Mosaic Plot"
 
 # create mosaic plot
-ggplot(data = physical_attack_data) +
+mosaic_plot <- ggplot(data = physical_attack_data) +
 geom_mosaic(aes(x = product(physical_attack_severity,
 most_of_the_time_or_always_felt_lonely),
 fill=physical_attack_severity)) +
@@ -168,6 +170,10 @@ scale_fill_discrete(name = "Physical Attack Severity Levels") +
 labs(x = "Most of the Time or Always Felt Lonely",
 y = "Physical Attack Severity",
 title = "Association between Physical Attack Severity and Loneliness")
+mosaic_plot
+
+# save figure with here package
+ggsave("mosaicplot.png", mosaic_plot, path = here::here())
 ```
 
 ## Write and Use a Function
