@@ -1,11 +1,11 @@
 ---
-title: "epi590_final_proj_code"
+title: "EPI 590 Final Project Code"
 author: "Tracy Huang"
 format: html
 editor: visual
 ---
 
-```{r echo = FALSE, message = FALSE}
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 # load packages
 library(tidyverse)
 library(janitor)
@@ -14,22 +14,26 @@ library(ggmosaic)
 library(gtsummary)
 ```
 
-#Introduction to Data
+# Introduction to Data
 The Global School-Based Student Health Survey (GSHS) (https://www.kaggle.com/datasets/leomartinelli/
 bullying-in-schools) is a dataset containing school-based survey data. The survey was conducted in Ar-
 gentina in 2018 with 56,981 student participants, using a self-administered questionnaire to obtain data on
-adolescent’s demographics, family, and social factors related to bullying. In this R Markdown report, the
-objective of the analysis is to conduct exploratory data analysis on the variable relating to the severity of
-experiencing physical attacks in bullying and factors related to social relationships with peers, friends, and
-family. The results will be displayed in a table. Additionally, in order to visually represent the association
-between physical attack severity and loneliness, a mosaic plot will be created.
+adolescent’s demographics, family, and social factors related to bullying. Some example variables are the severity of physical attacks in bullying, sex, whether one has low or high amounts of close friends, whether parents understand problems, obesity status, and whether one feels lonely.
 
-```{r read-in-data}
-data <- read.delim(here::here("data", "raw", "Bullying_2018.csv"), na.strings=c("", "NA"), sep = ";") %>%
+In this Quarto report, the objective of the analysis is to conduct exploratory data analysis on the variable relating to the severity of
+experiencing physical attacks in bullying and factors related to social relationships with peers, friends, and
+family. The results will be displayed in a descriptive statistics table. Secondly, a logistic regression model will be fit 
+to estimate the association between demographic and social-related factors and loneliness. Thirdly, in order to visually 
+represent the association between physical attack severity and loneliness, a mosaic plot will be created. Lastly, a function was created to 
+convert categorical variables with two levels in the dataset into binary variables with values of 0 or 1.
+
+```{r read-in-data, message = FALSE, warning = FALSE, echo = FALSE}
+data <- read.delim(here::here("data", "Bullying_2018.csv"), 
+									 na.strings=c("", "NA"), sep = ";") %>%
 clean_names()
 ```
 
-```{r clean-data}
+```{r clean-data, message = FALSE, warning = FALSE, echo = FALSE}
 # remove missing values
 completedata <- replace(data, data == ' ', NA)
 completedata <- na.omit(completedata)
@@ -91,11 +95,12 @@ as.factor(other_students_kind_and_helpful)) %>%
 select(-physically_attacked)
 ```
 
-Below, @descriptive-table contains descriptive statistics, @mosaic-plot contains a mosaic plot, and @regression-table contains logistic regression results. 
+# Tables, Figures, and Functions
+Below, @tbl-one contains descriptive statistics separated by the subgroups of the bullying physical attack severity variable. @tbl-two contains results for a logistic regression model with loneliness as the dependent variable and sex, peer kindness, and parents being able to understand problems as independent variables. @fig-mosaic contains a mosaic plot to show the association between the number of physical attacks in bullying and loneliness.
 
-#Descriptive Table
+## Descriptive Table
 ```{r}
-#| label: descriptive-table
+#| label: tbl-one
 #| tbl-cap: "Descriptive Statistics Table"
 # rename column variables for table
 table_data <- physical_attack_data
@@ -105,33 +110,40 @@ names(table_data)[names(table_data)=="close_friends"] <- "Close Friends"
 names(table_data)[names(table_data)=="were_obese"] <- "Were Obese"
 names(table_data)[names(table_data)=="most_of_the_time_or_always_felt_lonely"] <-
 "Most of the Time or Always Felt Lonely"
-
 names(table_data)[names(table_data)=="sex"] <- "Sex"
 names(table_data)[names(table_data)=="other_students_kind_and_helpful"] <-
 "Other Students Kind and Helpful"
 
 # create summary table
-tbl_summary(table_data, by = "physical_attack_severity",
+table1 <- tbl_summary(table_data, by = "physical_attack_severity",
 type = all_dichotomous() ~ "categorical") %>%
 add_overall() %>%
 modify_caption("**Distribution of Variables Across
 Physical Attack Severity Levels**")
+table1
 ```
 
 The number of participants in the overall sample size is `r nrow(table_data)`. 
 
-From the table, the count and percent for overall students who said yes to feeling lonely most of the time or always is `r gt_summary::inline_text(tbl1, variable = "Sex", column = "stat_0")`.
+From the table, the count and percent for female students in the subset of the sample that experienced low numbers of physical attacks in bullying is `r inline_text(table1, variable = "Sex", level = "Female", column = "Low")`.
 
-#Regression Table
+## Regression Table
 ```{r}
-#| label: regression-table
-#| tbl-cap: "Logistic Regression Table"
-regression_data <- physical_attack_data %>% mutate(most_of_the_time_or_always_felt_lonely = 
-																									 	ifelse(most_of_the_time_or_always_felt_lonely == "No", 0, 1))
+#| label: tbl-two
+#| tbl-cap: "Logistic Regression Results Table"
 
-logistic_model <- glm(most_of_the_time_or_always_felt_lonely ~ sex + other_students_kind_and_helpful + parents_understand_problems, 
+# recode variable
+regression_data <- physical_attack_data %>% 
+	mutate(most_of_the_time_or_always_felt_lonely = 
+		     ifelse(most_of_the_time_or_always_felt_lonely == "No", 0, 1))
+
+# fit logistic model
+logistic_model <- glm(most_of_the_time_or_always_felt_lonely ~ sex 
+											+ other_students_kind_and_helpful + 
+												parents_understand_problems, 
                       data = regression_data, family = binomial())
 
+# create regression table
 tbl_regression(
   logistic_model, 
   exponentiate = TRUE,
@@ -142,36 +154,37 @@ tbl_regression(
   ))
 ```
 
-asdfasdgasdga
-
-#Create Figure
-```{r}
-#| label: mosaic-plot
+## Figure
+```{r message = FALSE, warning = FALSE}
+#| label: fig-mosaic
 #| fig-cap: "Mosaic Plot"
+
+# create mosaic plot
 ggplot(data = physical_attack_data) +
 geom_mosaic(aes(x = product(physical_attack_severity,
-
 most_of_the_time_or_always_felt_lonely),
-
 fill=physical_attack_severity)) +
-
 scale_fill_discrete(name = "Physical Attack Severity Levels") +
 labs(x = "Most of the Time or Always Felt Lonely",
 y = "Physical Attack Severity",
 title = "Association between Physical Attack Severity and Loneliness")
 ```
 
-asdgasdgasdga
-
-#Write and Use a Function
-```{r function}
-# function to convert age variable from categorical to continuous
-
-cat_to_num <- function (variable) {
-	variable
+## Write and Use a Function
+```{r function, message=FALSE}
+# function to turn categorical variables with two levels into binary variable
+cat_to_bin <- function (variable) {
+	newvar <- ifelse(variable == "No", 0, 1)
+	return (newvar)
 }
-
-cat_to_num(data$custom_age)
 ```
 
+```{r message=FALSE}
+# first 10 observations of original variable
+head(physical_attack_data$were_obese, 10)
+```
 
+```{r message=FALSE}
+# first 10 observations of new variable
+head(cat_to_bin(physical_attack_data$were_obese), 10)
+```
