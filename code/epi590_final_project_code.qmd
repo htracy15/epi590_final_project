@@ -5,22 +5,44 @@ format: html
 editor: visual
 ---
 
+```{r echo = FALSE, message = FALSE}
+# load packages
+library(tidyverse)
+library(janitor)
+library(here)
+library(ggmosaic)
+library(gtsummary)
+```
 
-```{r}
-# read in data
-data <- read.delim("Bullying_2018.csv", na.strings=c("", "NA"), sep = ";") %>%
+#Introduction to Data
+The Global School-Based Student Health Survey (GSHS) (https://www.kaggle.com/datasets/leomartinelli/
+bullying-in-schools) is a dataset containing school-based survey data. The survey was conducted in Ar-
+gentina in 2018 with 56,981 student participants, using a self-administered questionnaire to obtain data on
+adolescent’s demographics, family, and social factors related to bullying. In this R Markdown report, the
+objective of the analysis is to conduct exploratory data analysis on the variable relating to the severity of
+experiencing physical attacks in bullying and factors related to social relationships with peers, friends, and
+family. The results will be displayed in a table. Additionally, in order to visually represent the association
+between physical attack severity and loneliness, a mosaic plot will be created.
+
+```{r read-in-data}
+data <- read.delim(here::here("data", "raw", "Bullying_2018.csv"), na.strings=c("", "NA"), sep = ";") %>%
 clean_names()
 ```
 
-```{r}
+```{r clean-data}
 # remove missing values
 completedata <- replace(data, data == ' ', NA)
 completedata <- na.omit(completedata)
+
 # recode variables
 physical_attack_data <- completedata %>%
+	
+	# select variables of interest
 dplyr::select(physically_attacked, parents_understand_problems, close_friends,
 were_obese, most_of_the_time_or_always_felt_lonely, sex,
 other_students_kind_and_helpful) %>%
+	
+	#recode physical attack severity var
 mutate(physical_attack_severity = case_when(
 grepl("0 times", physically_attacked) ~ "Low",
 grepl("1 time", physically_attacked) ~ "Low",
@@ -30,24 +52,31 @@ grepl("6 or 7 times", physically_attacked) ~ "Medium",
 grepl("8 or 9 times", physically_attacked) ~ "High",
 grepl("10 or 11 times", physically_attacked) ~ "High",
 grepl("12 or more times", physically_attacked) ~ "High"),
+
+  #recode parents understand problems var
 parents_understand_problems = case_when(
 grepl("Always", parents_understand_problems) ~ "Yes",
 grepl("Most of the time", parents_understand_problems) ~ "Yes",
 grepl("Sometimes", parents_understand_problems) ~ "No",
 grepl("Rarely", parents_understand_problems) ~ "No",
 grepl("Never", parents_understand_problems) ~ "No"),
+
+ # recode other students kind and helpful var
 other_students_kind_and_helpful = case_when(
 grepl("Always", other_students_kind_and_helpful) ~ "Yes",
 grepl("Most of the time", other_students_kind_and_helpful) ~ "Yes",
 grepl("Sometimes", other_students_kind_and_helpful) ~ "No",
 grepl("Rarely", other_students_kind_and_helpful) ~ "No",
 grepl("Never", other_students_kind_and_helpful) ~ "No"),
+
+ # recode close friends var
 close_friends = case_when(grepl("0", close_friends) ~ "Low",
 grepl("1", close_friends) ~ "Low",
 grepl("2", close_friends) ~ "Low",
 grepl("3 or more", close_friends) ~ "High"),
-physical_attack_severity = factor(physical_attack_severity,
 
+ # turn variables into factors
+physical_attack_severity = factor(physical_attack_severity,
 levels = c("Low", "Medium", "High")),
 parents_understand_problems = as.factor(parents_understand_problems),
 close_friends = as.factor(close_friends),
@@ -57,12 +86,17 @@ as.factor(most_of_the_time_or_always_felt_lonely),
 sex = as.factor(sex),
 other_students_kind_and_helpful =
 as.factor(other_students_kind_and_helpful)) %>%
-# remove physically attacked variable
+	
+ # remove physically attacked variable
 select(-physically_attacked)
 ```
 
+Below, @descriptive-table contains descriptive statistics, @mosaic-plot contains a mosaic plot, and @regression-table contains logistic regression results. 
+
 #Descriptive Table
 ```{r}
+#| label: descriptive-table
+#| tbl-cap: "Descriptive Statistics Table"
 # rename column variables for table
 table_data <- physical_attack_data
 names(table_data)[names(table_data)=="parents_understand_problems"] <-
@@ -84,18 +118,60 @@ modify_caption("**Distribution of Variables Across
 Physical Attack Severity Levels**")
 ```
 
+The number of participants in the overall sample size is `r nrow(table_data)`. 
+
+From the table, the count and percent for overall students who said yes to feeling lonely most of the time or always is `r gt_summary::inline_text(tbl1, variable = "Sex", column = "stat_0")`.
+
 #Regression Table
 ```{r}
+#| label: regression-table
+#| tbl-cap: "Logistic Regression Table"
+regression_data <- physical_attack_data %>% mutate(most_of_the_time_or_always_felt_lonely = 
+																									 	ifelse(most_of_the_time_or_always_felt_lonely == "No", 0, 1))
 
+logistic_model <- glm(most_of_the_time_or_always_felt_lonely ~ sex + other_students_kind_and_helpful + parents_understand_problems, 
+                      data = regression_data, family = binomial())
+
+tbl_regression(
+  logistic_model, 
+  exponentiate = TRUE,
+  label = list(
+    sex ~ "Sex",
+    other_students_kind_and_helpful ~ "Other Students Kind and Helpful",
+    parents_understand_problems ~ "Parents Understand Problems"
+  ))
 ```
+
+asdfasdgasdga
 
 #Create Figure
 ```{r}
+#| label: mosaic-plot
+#| fig-cap: "Mosaic Plot"
+ggplot(data = physical_attack_data) +
+geom_mosaic(aes(x = product(physical_attack_severity,
 
+most_of_the_time_or_always_felt_lonely),
+
+fill=physical_attack_severity)) +
+
+scale_fill_discrete(name = "Physical Attack Severity Levels") +
+labs(x = "Most of the Time or Always Felt Lonely",
+y = "Physical Attack Severity",
+title = "Association between Physical Attack Severity and Loneliness")
 ```
+
+asdgasdgasdga
 
 #Write and Use a Function
-```{r}
+```{r function}
+# function to convert age variable from categorical to continuous
 
+cat_to_num <- function (variable) {
+	variable
+}
+
+cat_to_num(data$custom_age)
 ```
+
 
